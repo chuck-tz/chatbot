@@ -1,8 +1,4 @@
-import nltk
-from nltk.stem.lancaster import LancasterStemmer
-
-stemmer = LancasterStemmer()
-
+from lemmatizer import Lemmatizer
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
@@ -11,14 +7,16 @@ import pickle
 import os
 
 
-class IntentionsModel(object):
+class IntentsModel(Lemmatizer):
     def __init__(
         self,
         intents="intents.json",
         pickled_data="data.pickle",
         model_file="chatbot-model",
         retrain=False,
+        lang="en",
     ):
+        super().__init__(lang)
         if os.path.exists(intents):
             with open(intents) as f:
                 self.intents = json.load(f)
@@ -41,7 +39,7 @@ class IntentionsModel(object):
 
         for intent in self.intents["intents"]:
             for pattern in intent["patterns"]:
-                wrds = nltk.word_tokenize(pattern)
+                wrds = self.lemmatize(pattern, remove_punct=True)
                 self.words.extend(wrds)
                 docs_x.append(wrds)
                 docs_y.append(intent["tag"])
@@ -49,9 +47,6 @@ class IntentionsModel(object):
             if intent["tag"] not in self.labels:
                 self.labels.append(intent["tag"])
 
-        self.words = [
-            stemmer.stem(w.lower()) for w in self.words if w not in ["?", ".", ",", "!"]
-        ]
         self.words = sorted(list(set(self.words)))
 
         self.labels = sorted(self.labels)
@@ -63,10 +58,9 @@ class IntentionsModel(object):
 
         for x, doc in enumerate(docs_x):
             bag = []
-            wrds = [stemmer.stem(w.lower()) for w in doc]
 
             for w in self.words:
-                if w in wrds:
+                if w in doc:
                     bag.append(1)
                 else:
                     bag.append(0)
@@ -95,7 +89,6 @@ class IntentionsModel(object):
                 ]
             )
             model.compile(
-                # YOUR CODE HERE
                 loss="categorical_crossentropy",
                 optimizer="adam",
                 metrics=["accuracy"],
@@ -119,3 +112,11 @@ class IntentionsModel(object):
 
     def get_intents(self):
         return self.intents
+
+
+if __name__ == "__main__":
+    intents = IntentsModel()
+    intents.get_intents()
+    intents.get_model()
+    intents.get_words()
+    intents.get_labels()
